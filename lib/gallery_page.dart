@@ -142,7 +142,7 @@ class _GalleryPageState extends State<GalleryPage>
     }
   }
 
-  void _handleImageSearch() async {
+  Future<void> _handleImageSearch() async {
     final ImagePicker picker = ImagePicker();
 
     // Close the "Add New Album" modal first
@@ -235,7 +235,7 @@ class _GalleryPageState extends State<GalleryPage>
         return;
       }
 
-      print("Extracted Metadata: $metadata");
+      // debugPrint("Extracted Metadata: $metadata"); // Commented out to avoid exposing sensitive data
 
       // Parse metadata as JSON
       final parsedMetadata = jsonDecode(metadata) as Map<String, dynamic>;
@@ -334,7 +334,7 @@ class _GalleryPageState extends State<GalleryPage>
                                 'url': albumUri,
                               };
 
-                              print("Selected Album: $selectedAlbum");
+                              debugPrint("Selected Album: $selectedAlbum");
 
                               if (_selectedListId != null) {
                                 await _firestoreService.upsertAlbum(
@@ -534,7 +534,7 @@ class _GalleryPageState extends State<GalleryPage>
       final lists = await _firestoreService.getUserListsWithNames(
         widget.userId,
       );
-      print("Lists loaded: $lists");
+      debugPrint("Lists loaded: $lists");
 
       if (lists.isEmpty) {
         // Create a default list if none exists
@@ -558,7 +558,7 @@ class _GalleryPageState extends State<GalleryPage>
         await _loadAlbums();
       }
     } catch (e) {
-      print("Error loading lists: $e");
+      debugPrint("Error loading lists: $e");
       setState(() {
         _loading = false;
       });
@@ -573,13 +573,13 @@ class _GalleryPageState extends State<GalleryPage>
         widget.userId,
         _selectedListId!,
       );
-      print("Albums loaded: $albums");
+      debugPrint("Albums loaded: $albums");
 
       setState(() {
         _albums = albums;
       });
     } catch (e) {
-      print("Error loading albums: $e");
+      debugPrint("Error loading albums: $e");
     }
   }
 
@@ -650,7 +650,7 @@ class _GalleryPageState extends State<GalleryPage>
     ); // Safely convert to int
 
     if (releaseId == null) {
-      print("Error: releaseId is null or invalid");
+      debugPrint("Error: releaseId is null or invalid");
       return; // Exit the method if releaseId is invalid
     }
 
@@ -788,7 +788,7 @@ class _GalleryPageState extends State<GalleryPage>
   }
 
   void openUrl(String url) async {
-    print("!!!!  Opening URL: $url");
+    debugPrint("Opening URL: $url");
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);

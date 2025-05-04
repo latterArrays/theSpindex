@@ -64,6 +64,9 @@ ios/Runner/GoogleService-Info.plist
 firebase-debug.log
 firebase-debug.*.log
 
+# Firebase runtime configuration
+functions/.runtimeconfig.json
+
 # Environment files
 .env*
 functions/.env

@@ -39,11 +39,21 @@ If you want to build Spindex on your own machine, you can follow these instructi
      - Download the `google-services.json` file for Android and place it in the `android/app` directory.
      - Download the `GoogleService-Info.plist` file for iOS and place it in the `ios/Runner` directory.
      - **Important**: These files contain sensitive information and should not be committed to version control. Ensure they are listed in your `.gitignore` file.
+     - Replace the project ID in `.firebaserc` with your own
 4. Configure API Keys:
      - Add your Discogs API key and OpenAI API key to a secure location. You can configure these keys in Firebase Remote Config for added security and dynamic updates.
      - Update your app to fetch these keys from Firebase Remote Config at runtime. Refer to the [FlutterFire Remote Config documentation](https://firebase.flutter.dev/docs/remote-config/overview/) for guidance.
      - Alternatively, you can use environment variables or a secure configuration file if Remote Config is not an option.
 5. Deploy Firebase Functions:
+     - configure your environment variables for use in the function by creating this file: `functions/.runtimeconfig.json` with this structure: 
+        ```
+        {
+            "discogs": {
+                "secret": "< Your Discogs Secret >",
+                "key": "< Your Discogs Key >"
+            }
+        }
+        ```
      - Navigate to the `functions` directory:
          ```bash
          cd functions
@@ -78,6 +88,7 @@ To ensure sensitive files are not committed to version control, make sure the fo
 # Firebase configuration files
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+functions/.runtimeconfig.json
 
 # Environment files
 .env*
