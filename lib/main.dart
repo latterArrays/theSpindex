@@ -1,14 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:spindex/lists_page.dart';
 import 'package:spindex/settings_page.dart';
-import 'openai_service.dart';
 import 'gallery_page.dart';
-import 'album_scanner_page.dart';
 import 'auth_page.dart';
 import 'firebase_options.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';

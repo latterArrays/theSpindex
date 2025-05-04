@@ -68,9 +68,80 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _changePassword() async {
-    // Implement password change logic here
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Password change functionality coming soon!')),
+    final TextEditingController currentPasswordController = TextEditingController();
+    final TextEditingController newPasswordController = TextEditingController();
+    final TextEditingController confirmPasswordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Change Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: currentPasswordController,
+                obscureText: true,
+                decoration: InputDecoration(labelText: 'Current Password'),
+              ),
+              TextField(
+                controller: newPasswordController,
+                obscureText: true,
+                decoration: InputDecoration(labelText: 'New Password'),
+              ),
+              TextField(
+                controller: confirmPasswordController,
+                obscureText: true,
+                decoration: InputDecoration(labelText: 'Confirm New Password'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (newPasswordController.text != confirmPasswordController.text) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Passwords do not match!')),
+                  );
+                  return;
+                }
+
+                final user = _auth.currentUser;
+                if (user != null) {
+                  try {
+                    final cred = EmailAuthProvider.credential(
+                      email: user.email!,
+                      password: currentPasswordController.text,
+                    );
+
+                    // Reauthenticate the user
+                    await user.reauthenticateWithCredential(cred);
+
+                    // Update the password
+                    await user.updatePassword(newPasswordController.text);
+
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Password updated successfully!')),
+                    );
+                  } catch (e) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to update password: $e')),
+                    );
+                  }
+                }
+              },
+              child: Text('Change'),
+            ),
+          ],
+        );
+      },
     );
   }
 

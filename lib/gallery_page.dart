@@ -145,16 +145,44 @@ class _GalleryPageState extends State<GalleryPage>
   void _handleImageSearch() async {
     final ImagePicker picker = ImagePicker();
 
-    // Dismiss the "Add New Album" modal
+    // Close the "Add New Album" modal first
     Navigator.pop(context);
+
+    // Show a dialog to let the user choose between camera and gallery
+    final ImageSource? source = await showDialog<ImageSource>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Select Image Source"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.camera_alt),
+              title: Text("Take a Picture"),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_library),
+              title: Text("Choose from Gallery"),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) {
+      // User canceled the dialog
+      return;
+    }
 
     // Set the state to show the spinner immediately
     setState(() {
       _isProcessing = true;
     });
 
-    // Allow the user to pick an image
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    // Allow the user to capture or pick an image
+    final XFile? image = await picker.pickImage(source: source);
 
     if (image == null) {
       // User canceled the image picker
@@ -492,7 +520,7 @@ class _GalleryPageState extends State<GalleryPage>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: Duration(seconds: 2), // Adjust duration for spinning speed
+      duration: Duration(seconds: 8), // Adjust duration for spinning speed
     )..repeat(); // Repeat the animation indefinitely
 
     _loadLists();
@@ -507,6 +535,17 @@ class _GalleryPageState extends State<GalleryPage>
         widget.userId,
       );
       print("Lists loaded: $lists");
+
+      if (lists.isEmpty) {
+        // Create a default list if none exists
+        final defaultListId = DateTime.now().millisecondsSinceEpoch.toString();
+        await _firestoreService.setList(
+          widget.userId,
+          defaultListId,
+          name: "My Collection",
+        );
+        return _loadLists(); // Reload lists after creating the default list
+      }
 
       setState(() {
         _listNames = lists;
@@ -1104,55 +1143,59 @@ class _GalleryPageState extends State<GalleryPage>
                               if (index == _albums.length) {
                                 return GestureDetector(
                                   onTap: _showAddAlbumModal,
-                                  child: AnimatedBuilder(
-                                    animation: _controller,
-                                    builder: (context, child) {
-                                      final angle =
-                                          _controller.value *
-                                          360; // Map value to 0-360 degrees
-                                      return Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                const Color.fromARGB(
-                                                  255,
-                                                  2,
-                                                  208,
-                                                  184,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      AnimatedBuilder(
+                                        animation: _controller,
+                                        builder: (context, child) {
+                                          final angle = _controller.value * 2 * pi; // Rotate 360 degrees
+                                          return Transform.rotate(
+                                            angle: angle,
+                                            child: Transform.scale(
+                                              scale: 1, // Scale up the spinning album
+                                              child: Center( // Ensure the spinning album is centered
+                                                child: ClipRRect(
+                                                  borderRadius: BorderRadius.circular(180), // Fully rounded corners
+                                                  child: Stack(
+                                                    alignment: Alignment.center, // Center the gradient and image
+                                                    children: [
+                                                      Image.asset(
+                                                        'assets/album.png', // Path to your vinyl record image
+                                                        width: 300, // Adjust size as needed
+                                                        height: 300,
+                                                        fit: BoxFit.cover,
+                                                      ),
+                                                      Container(
+                                                        decoration: BoxDecoration(
+                                                          gradient: LinearGradient(
+                                                            colors: [
+                                                              const Color.fromARGB(150, 2, 208, 184), // Semi-transparent teal
+                                                              const Color.fromARGB(150, 250, 125, 0),  // Semi-transparent orange
+                                                            ],
+                                                            begin: Alignment.topLeft,
+                                                            end: Alignment.bottomRight,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
-                                                const Color.fromARGB(
-                                                  255,
-                                                  250,
-                                                  125,
-                                                  0,
-                                                ),
-                                              ],
-                                              begin: Alignment(
-                                                cos(angle * pi / 180),
-                                                sin(angle * pi / 180),
-                                              ),
-                                              end: Alignment(
-                                                -cos(angle * pi / 180),
-                                                -sin(angle * pi / 180),
                                               ),
                                             ),
-                                            borderRadius: BorderRadius.circular(
-                                              160,
-                                            ),
-                                          ),
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.add,
-                                        size: 90,
-                                        color: Colors.white,
+                                          );
+                                        },
                                       ),
-                                    ),
+                                      // The "+" sign remains stationary
+                                      Text(
+                                        "+",
+                                        style: TextStyle(
+                                          fontSize: 130, // Larger font size for visibility
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 );
                               }

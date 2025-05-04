@@ -25,7 +25,6 @@ class _AuthPageState extends State<AuthPage> {
         ),
         backgroundColor: Colors.teal.shade800, // Set the background color here
       ),
-      //backgroundColor: Color.fromARGB(255, 255, 179, 0), // Replace with your image's background color
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
@@ -46,7 +45,7 @@ Widget _buildLogo() {
   return FractionallySizedBox(
     widthFactor: 0.8, // Use 80% of the screen width
     child: AspectRatio(
-      aspectRatio: 16 / 9, // Replace with your image's aspect ratio
+      aspectRatio: 16 / 9, 
       child: Image.asset(
         'assets/TheSpindexFullLogo.png',
         fit: BoxFit.contain,
@@ -147,10 +146,12 @@ Widget _buildLogo() {
       );
       if (user != null) {
         _showToast("Signed up: ${user.uid}");
-        await _createDefaultList(user);
+        await _createDefaultList(user); // Ensure the default list is created
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => MainPage()),
+          MaterialPageRoute(
+            builder: (context) => MainPage(), // Navigate only after list creation
+          ),
         );
       }
     } catch (e) {
