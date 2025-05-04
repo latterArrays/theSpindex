@@ -1,0 +1,20 @@
+node_modules/
+*.local
+
+# Firebase configuration files
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Environment files
+.env*
+
+# Build files
+build/
+
+# iOS build files
+ios/Pods/
+ios/Runner.xcworkspace/xcuserdata/
+
+# Android build files
+android/.gradle/
+android/app/.cxx/
