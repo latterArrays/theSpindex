@@ -24,7 +24,7 @@ exports.proxyDiscogs = onRequest(async (request, response) => {
         const url = `https://api.discogs.com/${endpoint}`;
         const discogsKey = process.env.DISCOGS_KEY;
         const discogsSecret = process.env.DISCOGS_SECRET;
-        const userAgent = "TheSpindex/1.0 +https://thespindex-d6b69.web.app/";
+        const userAgent = "TheSpindex/1.0 +https://thespindex-d6b69.web.app/"; // Replace with your own user agent
 
         console.log("Making request to Discogs API:");
         console.log(`URL: ${url}`);

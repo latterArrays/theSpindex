@@ -45,17 +45,14 @@ If you want to build Spindex on your own machine, you can follow these instructi
      - Update your app to fetch these keys from Firebase Remote Config at runtime. Refer to the [FlutterFire Remote Config documentation](https://firebase.flutter.dev/docs/remote-config/overview/) for guidance.
      - Alternatively, you can use environment variables or a secure configuration file if Remote Config is not an option.
 5. Deploy Firebase Functions:
-     - configure your environment variables for use in the function by creating this file: `functions/.runtimeconfig.json` with this structure: 
+     - configure your environment variables for use in the function by creating this file: `functions/.env` with your discogs key and secret: 
         ```
-        {
-            "discogs": {
-                "secret": "< Your Discogs Secret >",
-                "key": "< Your Discogs Key >"
-            }
-        }
+        DISCOGS_KEY="< Your Discogs Key >"                # from discogs.key
+        DISCOGS_SECRET="< Your Discogs Secret >"          # from discogs.secret
         ```
+     - Modify the index.html file to use a unique application identifier for your project to control rate limiting with Discogs
      - Navigate to the `functions` directory:
-         ```bash
+         ```bash/
          cd functions
          ```
      - Install dependencies:
@@ -66,6 +63,8 @@ If you want to build Spindex on your own machine, you can follow these instructi
          ```bash
          firebase deploy --only functions
          ```
+
+*Note: If you, like me, inevitably leak an API key or two, make sure to reset them with their respective services, and then use a handy tool like [bfg](https://rtyley.github.io/bfg-repo-cleaner/) to clean up files or keys from your git history.*
 
 ### Running the App
 1. Run the app on an emulator or connected device:
