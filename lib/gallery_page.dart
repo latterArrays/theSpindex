@@ -1147,7 +1147,7 @@ class _GalleryPageState extends State<GalleryPage>
                                     builder: (context, constraints) {
                                       final cellSize = constraints.maxWidth; // Use the cell's width as the base size
                                       final spinnerSize = cellSize * 0.8; // Spinner size is 80% of the cell size
-                                      final plusFontSize = cellSize * 0.4; // "+" font size is 40% of the cell size
+                                      final plusFontSize = cellSize * 0.3; // "+" font size is 30% of the cell size
 
                                       return Stack(
                                         alignment: Alignment.center,
