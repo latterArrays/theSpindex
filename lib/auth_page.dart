@@ -73,6 +73,10 @@ Widget _buildLogo() {
           },
           child: Text("Don't have an account? Sign Up"),
         ),
+        TextButton(
+          onPressed: _handleForgotPassword,
+          child: Text("Forgot Password?"),
+        ),
       ],
     );
   }
@@ -156,6 +160,21 @@ Widget _buildLogo() {
       }
     } catch (e) {
       _showToast("Error signing up: ${e.toString()}");
+    }
+  }
+
+  // Method to handle "Forgot Password"
+  Future<void> _handleForgotPassword() async {
+    if (!_isValidEmail(_emailController.text)) {
+      _showToast("Please enter a valid email address.");
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: _emailController.text);
+      _showToast("Password reset email sent. Check your inbox.");
+    } catch (e) {
+      _showToast("Error sending password reset email: ${e.toString()}");
     }
   }
 

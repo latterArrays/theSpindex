@@ -1143,59 +1143,69 @@ class _GalleryPageState extends State<GalleryPage>
                               if (index == _albums.length) {
                                 return GestureDetector(
                                   onTap: _showAddAlbumModal,
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      AnimatedBuilder(
-                                        animation: _controller,
-                                        builder: (context, child) {
-                                          final angle = _controller.value * 2 * pi; // Rotate 360 degrees
-                                          return Transform.rotate(
-                                            angle: angle,
-                                            child: Transform.scale(
-                                              scale: 1, // Scale up the spinning album
-                                              child: Center( // Ensure the spinning album is centered
-                                                child: ClipRRect(
-                                                  borderRadius: BorderRadius.circular(180), // Fully rounded corners
-                                                  child: Stack(
-                                                    alignment: Alignment.center, // Center the gradient and image
-                                                    children: [
-                                                      Image.asset(
-                                                        'assets/album.png', // Path to your vinyl record image
-                                                        width: 300, // Adjust size as needed
-                                                        height: 300,
-                                                        fit: BoxFit.cover,
-                                                      ),
-                                                      Container(
-                                                        decoration: BoxDecoration(
-                                                          gradient: LinearGradient(
-                                                            colors: [
-                                                              const Color.fromARGB(150, 2, 208, 184), // Semi-transparent teal
-                                                              const Color.fromARGB(150, 250, 125, 0),  // Semi-transparent orange
-                                                            ],
-                                                            begin: Alignment.topLeft,
-                                                            end: Alignment.bottomRight,
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final cellSize = constraints.maxWidth; // Use the cell's width as the base size
+                                      final spinnerSize = cellSize * 0.8; // Spinner size is 80% of the cell size
+                                      final plusFontSize = cellSize * 0.4; // "+" font size is 40% of the cell size
+
+                                      return Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          AnimatedBuilder(
+                                            animation: _controller,
+                                            builder: (context, child) {
+                                              final angle = _controller.value * 2 * pi; // Rotate 360 degrees
+                                              return Transform.rotate(
+                                                angle: angle,
+                                                child: Transform.scale(
+                                                  scale: 1, // Keep the spinner scale at 1
+                                                  child: Center(
+                                                    child: ClipRRect(
+                                                      borderRadius: BorderRadius.circular(spinnerSize / 2), // Fully rounded corners
+                                                      child: Stack(
+                                                        alignment: Alignment.center, // Center the gradient and image
+                                                        children: [
+                                                          Image.asset(
+                                                            'assets/album.png', // Path to your vinyl record image
+                                                            width: spinnerSize,
+                                                            height: spinnerSize,
+                                                            fit: BoxFit.cover,
                                                           ),
-                                                        ),
+                                                          Container(
+                                                            width: spinnerSize,
+                                                            height: spinnerSize,
+                                                            decoration: BoxDecoration(
+                                                              gradient: LinearGradient(
+                                                                colors: [
+                                                                  const Color.fromARGB(150, 2, 208, 184), // Semi-transparent teal
+                                                                  const Color.fromARGB(150, 250, 125, 0),  // Semi-transparent orange
+                                                                ],
+                                                                begin: Alignment.topLeft,
+                                                                end: Alignment.bottomRight,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
-                                                    ],
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
+                                              );
+                                            },
+                                          ),
+                                          // The "+" sign remains stationary
+                                          Text(
+                                            "+",
+                                            style: TextStyle(
+                                              fontSize: plusFontSize, // Dynamically adjust font size
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
                                             ),
-                                          );
-                                        },
-                                      ),
-                                      // The "+" sign remains stationary
-                                      Text(
-                                        "+",
-                                        style: TextStyle(
-                                          fontSize: 130, // Larger font size for visibility
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                 );
                               }
