@@ -6,6 +6,7 @@ import 'gallery_page.dart';
 import 'auth_page.dart';
 import 'firebase_options.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'profile_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -94,6 +95,7 @@ class _MainPageState extends State<MainPage> {
     super.initState();
     _pages = [
       GalleryPage(userId: FirebaseAuth.instance.currentUser!.uid),
+      ProfilePage(userId: FirebaseAuth.instance.currentUser!.uid),
       SettingsPage(),
     ];
   }
@@ -108,17 +110,16 @@ class _MainPageState extends State<MainPage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
-          if (index >= 0 && index < _pages.length) {
-            setState(() {
-              _currentIndex = index;
-            });
-          }
+          setState(() {
+            _currentIndex = index;
+          });
         },
         selectedItemColor: Colors.teal.shade900,
         unselectedItemColor: Colors.teal.shade500,
         backgroundColor: Colors.teal.shade50,
         items: [
-            BottomNavigationBarItem(icon: Icon(Icons.album), label: "Gallery"),
+          BottomNavigationBarItem(icon: Icon(Icons.album), label: "Gallery"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart'; // Import for debugPrint
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -46,10 +47,12 @@ class FirestoreService {
 
   // Delete an album from a list
   Future<void> deleteAlbum(String userId, String listId, String albumId) async {
+    print('Deleting album with ID: $albumId from list with ID: $listId');
+    debugPrint('Deleting album with ID: $albumId from list with ID: $listId');
     final listRef = _firestore.collection('users').doc(userId).collection('lists').doc(listId);
     final snapshot = await listRef.get();
     final albums = List<Map<String, dynamic>>.from(snapshot.data()?['albums'] ?? []);
-    final updatedAlbums = albums.where((album) => album['id'] != albumId).toList();
+    final updatedAlbums = albums.where((album) => album['id'].toString() != albumId).toList();
     await listRef.update({'albums': updatedAlbums});
   }
 }

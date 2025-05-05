@@ -127,6 +127,33 @@ Widget _buildLogo() {
       );
       if (user != null) {
         _showToast("Signed in: ${user.uid}");
+
+        // Check if the user's profile exists
+        final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+        final docSnapshot = await userDoc.get();
+
+        if (!docSnapshot.exists) {
+          // Initialize the user's profile if it doesn't exist
+          await userDoc.set({
+            'email': user.email,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+          await userDoc.collection('lists').add({
+            'name': 'My Collection',
+            'createdAt': FieldValue.serverTimestamp(),
+            'albums': [],
+          });
+
+          _showToast("Profile initialized for user: ${user.uid}");
+        }
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainPage(),
+          ),
+        );
       }
     } catch (e) {
       _showToast("Error signing in: ${e.toString()}");

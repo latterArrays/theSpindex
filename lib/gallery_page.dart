@@ -11,6 +11,68 @@ import 'package:url_launcher/url_launcher.dart'; // Import for launching URLs
 import 'dart:io'; // Import for File
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:firebase_storage/firebase_storage.dart'; // Import for Firebase Storage
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class SetFavoriteAlbumButton extends StatefulWidget {
+  final String userId;
+  final Map<String, dynamic> album;
+
+  SetFavoriteAlbumButton({required this.userId, required this.album});
+
+  @override
+  _SetFavoriteAlbumButtonState createState() => _SetFavoriteAlbumButtonState();
+}
+
+class _SetFavoriteAlbumButtonState extends State<SetFavoriteAlbumButton> {
+  bool _isFavorite = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfFavorite();
+  }
+
+  Future<void> _checkIfFavorite() async {
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(widget.userId).get();
+    final favoriteAlbum = userDoc.data()?['favoriteAlbum'];
+    if (favoriteAlbum == widget.album['title']) {
+      setState(() {
+        _isFavorite = true;
+      });
+    }
+  }
+
+  Future<void> _setFavoriteAlbum() async {
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(widget.userId).update({
+        'favoriteAlbum': widget.album['title'],
+        'favoriteAlbumCoverUrl': widget.album['coverUrl'],
+      });
+      setState(() {
+        _isFavorite = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Favorite album set to ${widget.album['title']}!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to set favorite album: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      icon: Icon(
+        Icons.favorite,
+        color: _isFavorite ? Colors.red : Colors.grey,
+      ),
+      label: Text('Set Favorite'),
+      onPressed: _setFavoriteAlbum,
+    );
+  }
+}
 
 class GalleryPage extends StatefulWidget {
   final String userId;
@@ -744,39 +806,58 @@ class _GalleryPageState extends State<GalleryPage>
                     ),
                   ),
                 SizedBox(height: 16),
-                // Link to Discogs
-                if (url != null)
-                  TextButton.icon(
-                    icon: Icon(Icons.music_note),
-                    label: Text("See more on Discogs"),
-                    onPressed: () => openUrl(url),
-                  ),
-                // Buttons for editing and deleting
+                // Buttons arranged in a row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     ElevatedButton.icon(
-                      icon: Icon(Icons.edit),
-                      label: Text("Edit"),
-                      onPressed: () {
-                        Navigator.pop(context); // Close the details modal
-                        _showEditAlbumDialog(album); // Open the edit modal
+                      icon: Icon(Icons.music_note),
+                      label: Text("Discogs"),
+                      onPressed: () => openUrl(url),
+                    ),
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.favorite),
+                      label: Text("Set Favorite"),
+                      onPressed: () async {
+                        try {
+                          await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(widget.userId)
+                              .update({
+                            'favoriteAlbum': album['title'],
+                            'favoriteAlbumCoverUrl': album['coverUrl'],
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'Favorite album set to ${album['title']}!'),
+                            ),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'Failed to set favorite album: $e'),
+                            ),
+                          );
+                        }
                       },
                     ),
                     ElevatedButton.icon(
-                      icon: Icon(
-                        Icons.delete,
-                        color: const Color.fromARGB(255, 255, 255, 254),
-                      ),
-                      label: Text("Delete"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
-                      ),
+                      icon: Icon(Icons.edit),
+                      label: Text("Edit"),
                       onPressed: () {
-                        Navigator.pop(context); // Close the details modal
-                        _confirmDeleteAlbum(
-                          album,
-                        ); // Open the delete confirmation
+                        Navigator.pop(context);
+                        _showEditAlbumDialog(album);
+                      },
+                    ),
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.delete),
+                      label: Text("Delete"),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _confirmDeleteAlbum(album);
                       },
                     ),
                   ],
@@ -911,36 +992,46 @@ class _GalleryPageState extends State<GalleryPage>
     );
   }
 
+  // Add debug prints to confirm delete modal and button press
   void _confirmDeleteAlbum(Map<String, dynamic> album) {
+    print('Opening delete confirmation for album: ${album['title']}');
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Delete Album'),
-            content: Text(
-              'Are you sure you want to delete "${album['title']}"?',
+      builder: (context) {
+        print('Building delete confirmation dialog');
+        return AlertDialog(
+          title: Text('Delete Album'),
+          content: Text('Are you sure you want to delete "${album['title']}"?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                print('Cancel button pressed');
+                Navigator.pop(context);
+              },
+              child: Text('Cancel'),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  if (_selectedListId != null) {
-                    await _firestoreService.deleteAlbum(
-                      widget.userId,
-                      _selectedListId!,
-                      album['id'],
-                    );
-                    _loadAlbums();
-                  }
-                  Navigator.pop(context);
-                },
-                child: Text('Delete', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
+            TextButton(
+              onPressed: () async {
+                print('Delete button pressed for album: ${album['title']}');
+                if (_selectedListId != null) {
+                  // Ensure album ID is treated as a string
+                  final albumId = album['id'].toString();
+                  print('Deleting album with ID: $albumId from list: $_selectedListId');
+                  await _firestoreService.deleteAlbum(
+                    widget.userId,
+                    _selectedListId!,
+                    albumId,
+                  );
+                  print('Album deleted successfully');
+                  _loadAlbums();
+                }
+                Navigator.pop(context);
+              },
+              child: Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1011,267 +1102,270 @@ class _GalleryPageState extends State<GalleryPage>
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            title: Align(
-              alignment: Alignment.centerLeft,
-              child: Text("Gallery"),
-            ),
-            actions: [
-              DropdownButton<String>(
-                value:
-                    _listNames.any((list) => list['id'] == _selectedListId)
-                        ? _selectedListId
-                        : null, // Ensure the value is valid
-                items: [
-                  ..._listNames.map((list) {
-                    return DropdownMenuItem(
-                      value: list['id'],
-                      child: SizedBox(
-                        width: 200, // Set a fixed width for the dropdown items
-                        child: Text(
-                          list['name']!,
-                          overflow:
-                              TextOverflow
-                                  .ellipsis, // Truncate text with ellipsis
-                          maxLines: 1, // Ensure it stays on one line
-                        ),
-                      ),
-                    );
-                  }),
-                  DropdownMenuItem(
-                    value: 'add_list',
-                    child: Text(" + New List"),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value == 'add_list') {
-                    // Call the _addNewList function when "Add list" is selected
-                    _addNewList();
-                  } else {
-                    // Handle regular list selection
-                    setState(() {
-                      _selectedListId = value;
-                      _loadAlbums();
-                    });
-                  }
-                },
+    return RefreshIndicator(
+      onRefresh: _loadLists,
+      child: Stack(
+        children: [
+          Scaffold(
+            appBar: AppBar(
+              title: Align(
+                alignment: Alignment.centerLeft,
+                child: Text("Gallery"),
               ),
-              IconButton(
-                icon: Icon(Icons.settings),
-                onPressed: () {
-                  final TextEditingController listNameController =
-                      TextEditingController(
-                        text:
-                            _listNames.firstWhere(
-                              (list) => list['id'] == _selectedListId,
-                            )['name'],
-                      );
-                  showDialog(
-                    context: context,
-                    builder:
-                        (context) => AlertDialog(
-                          title: Text("Edit List"),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              TextField(
-                                controller: listNameController,
-                                decoration: InputDecoration(
-                                  labelText: "Edit List Name",
-                                ),
-                              ),
-                              TextButton.icon(
-                                icon: Icon(Icons.check, color: Colors.green),
-                                label: Text("Done"),
-                                onPressed: () async {
-                                  final newName =
-                                      listNameController.text.trim();
-                                  if (newName.isNotEmpty &&
-                                      _selectedListId != null) {
-                                    await _firestoreService.setList(
-                                      widget.userId,
-                                      _selectedListId!,
-                                      name: newName,
-                                    );
-                                    await _loadLists(); // Reload lists to reflect the updated name
-                                  }
-                                  Navigator.pop(
-                                    context,
-                                  ); // Close the settings dialog
-                                },
-                              ),
-                              IconButton(
-                                icon: Icon(Icons.delete, color: Colors.red),
-                                onPressed: _showDeleteListConfirmation,
-                              ),
-                            ],
+              actions: [
+                DropdownButton<String>(
+                  value:
+                      _listNames.any((list) => list['id'] == _selectedListId)
+                          ? _selectedListId
+                          : null, // Ensure the value is valid
+                  items: [
+                    ..._listNames.map((list) {
+                      return DropdownMenuItem(
+                        value: list['id'],
+                        child: SizedBox(
+                          width: 200, // Set a fixed width for the dropdown items
+                          child: Text(
+                            list['name']!,
+                            overflow:
+                                TextOverflow
+                                    .ellipsis, // Truncate text with ellipsis
+                            maxLines: 1, // Ensure it stays on one line
                           ),
                         ),
-                  );
-                },
-              ),
-            ],
-          ),
-          body:
-              _loading
-                  ? Center(child: CircularProgressIndicator())
-                  : _listNames.isEmpty
-                  ? Center(
-                    child: Text(
-                      "No lists available. Please create a new list.",
-                      style: TextStyle(fontSize: 16),
+                      );
+                    }),
+                    DropdownMenuItem(
+                      value: 'add_list',
+                      child: Text(" + New List"),
                     ),
-                  )
-                  : Column(
-                    children: [
-                      Expanded(
-                        child: PageStorage(
-                          bucket: _bucket,
-                          child: GridView.builder(
-                            key: PageStorageKey<String>('galleryGrid'),
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 8,
-                                  mainAxisSpacing: 8,
+                  ],
+                  onChanged: (value) {
+                    if (value == 'add_list') {
+                      // Call the _addNewList function when "Add list" is selected
+                      _addNewList();
+                    } else {
+                      // Handle regular list selection
+                      setState(() {
+                        _selectedListId = value;
+                        _loadAlbums();
+                      });
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: Icon(Icons.settings),
+                  onPressed: () {
+                    final TextEditingController listNameController =
+                        TextEditingController(
+                          text:
+                              _listNames.firstWhere(
+                                (list) => list['id'] == _selectedListId,
+                              )['name'],
+                        );
+                    showDialog(
+                      context: context,
+                      builder:
+                          (context) => AlertDialog(
+                            title: Text("Edit List"),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextField(
+                                  controller: listNameController,
+                                  decoration: InputDecoration(
+                                    labelText: "Edit List Name",
+                                  ),
                                 ),
-                            itemCount: _albums.length + 1,
-                            itemBuilder: (context, index) {
-                              if (index == _albums.length) {
-                                return GestureDetector(
-                                  onTap: _showAddAlbumModal,
-                                  child: LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      final cellSize = constraints.maxWidth; // Use the cell's width as the base size
-                                      final spinnerSize = cellSize * 0.8; // Spinner size is 80% of the cell size
-                                      final plusFontSize = cellSize * 0.3; // "+" font size is 30% of the cell size
+                                TextButton.icon(
+                                  icon: Icon(Icons.check, color: Colors.green),
+                                  label: Text("Done"),
+                                  onPressed: () async {
+                                    final newName =
+                                        listNameController.text.trim();
+                                    if (newName.isNotEmpty &&
+                                        _selectedListId != null) {
+                                      await _firestoreService.setList(
+                                        widget.userId,
+                                        _selectedListId!,
+                                        name: newName,
+                                      );
+                                      await _loadLists(); // Reload lists to reflect the updated name
+                                    }
+                                    Navigator.pop(
+                                      context,
+                                    ); // Close the settings dialog
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  onPressed: _showDeleteListConfirmation,
+                                ),
+                              ],
+                            ),
+                          ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            body:
+                _loading
+                    ? Center(child: CircularProgressIndicator())
+                    : _listNames.isEmpty
+                    ? Center(
+                      child: Text(
+                        "No lists available. Please create a new list.",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    )
+                    : Column(
+                      children: [
+                        Expanded(
+                          child: PageStorage(
+                            bucket: _bucket,
+                            child: GridView.builder(
+                              key: PageStorageKey<String>('galleryGrid'),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 8,
+                                    mainAxisSpacing: 8,
+                                  ),
+                              itemCount: _albums.length + 1,
+                              itemBuilder: (context, index) {
+                                if (index == _albums.length) {
+                                  return GestureDetector(
+                                    onTap: _showAddAlbumModal,
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final cellSize = constraints.maxWidth; // Use the cell's width as the base size
+                                        final spinnerSize = cellSize * 0.8; // Spinner size is 80% of the cell size
+                                        final plusFontSize = cellSize * 0.3; // "+" font size is 30% of the cell size
 
-                                      return Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          AnimatedBuilder(
-                                            animation: _controller,
-                                            builder: (context, child) {
-                                              final angle = _controller.value * 2 * pi; // Rotate 360 degrees
-                                              return Transform.rotate(
-                                                angle: angle,
-                                                child: Transform.scale(
-                                                  scale: 1, // Keep the spinner scale at 1
-                                                  child: Center(
-                                                    child: ClipRRect(
-                                                      borderRadius: BorderRadius.circular(spinnerSize / 2), // Fully rounded corners
-                                                      child: Stack(
-                                                        alignment: Alignment.center, // Center the gradient and image
-                                                        children: [
-                                                          Image.asset(
-                                                            'assets/album.png', // Path to your vinyl record image
-                                                            width: spinnerSize,
-                                                            height: spinnerSize,
-                                                            fit: BoxFit.cover,
-                                                          ),
-                                                          Container(
-                                                            width: spinnerSize,
-                                                            height: spinnerSize,
-                                                            decoration: BoxDecoration(
-                                                              gradient: LinearGradient(
-                                                                colors: [
-                                                                  const Color.fromARGB(150, 2, 208, 184), // Semi-transparent teal
-                                                                  const Color.fromARGB(150, 250, 125, 0),  // Semi-transparent orange
-                                                                ],
-                                                                begin: Alignment.topLeft,
-                                                                end: Alignment.bottomRight,
+                                        return Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            AnimatedBuilder(
+                                              animation: _controller,
+                                              builder: (context, child) {
+                                                final angle = _controller.value * 2 * pi; // Rotate 360 degrees
+                                                return Transform.rotate(
+                                                  angle: angle,
+                                                  child: Transform.scale(
+                                                    scale: 1, // Keep the spinner scale at 1
+                                                    child: Center(
+                                                      child: ClipRRect(
+                                                        borderRadius: BorderRadius.circular(spinnerSize / 2), // Fully rounded corners
+                                                        child: Stack(
+                                                          alignment: Alignment.center, // Center the gradient and image
+                                                          children: [
+                                                            Image.asset(
+                                                              'assets/album.png', // Path to your vinyl record image
+                                                              width: spinnerSize,
+                                                              height: spinnerSize,
+                                                              fit: BoxFit.cover,
+                                                            ),
+                                                            Container(
+                                                              width: spinnerSize,
+                                                              height: spinnerSize,
+                                                              decoration: BoxDecoration(
+                                                                gradient: LinearGradient(
+                                                                  colors: [
+                                                                    const Color.fromARGB(150, 2, 208, 184), // Semi-transparent teal
+                                                                    const Color.fromARGB(150, 250, 125, 0),  // Semi-transparent orange
+                                                                  ],
+                                                                  begin: Alignment.topLeft,
+                                                                  end: Alignment.bottomRight,
+                                                                ),
                                                               ),
                                                             ),
-                                                          ),
-                                                        ],
+                                                          ],
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                          // The "+" sign remains stationary
-                                          Text(
-                                            "+",
-                                            style: TextStyle(
-                                              fontSize: plusFontSize, // Dynamically adjust font size
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
+                                                );
+                                              },
                                             ),
-                                          ),
-                                        ],
-                                      );
-                                    },
+                                            // The "+" sign remains stationary
+                                            Text(
+                                              "+",
+                                              style: TextStyle(
+                                                fontSize: plusFontSize, // Dynamically adjust font size
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  );
+                                }
+                                final album = _albums[index];
+                                return GestureDetector(
+                                  onTap: () => _showAlbumDetails(album),
+                                  onLongPress: () => _showAlbumOptions(album),
+                                  child: Card(
+                                    child: Column(
+                                      children: [
+                                        Expanded(
+                                          child: album['coverUrl'] != null &&
+                                                  album['coverUrl']
+                                                      .startsWith('http')
+                                              ? Image.network(
+                                                  album['coverUrl'], // Use NetworkImage for URLs
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : Image.file(
+                                                  File(album['coverUrl']), // Use FileImage for local paths
+                                                  fit: BoxFit.cover,
+                                                ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 );
-                              }
-                              final album = _albums[index];
-                              return GestureDetector(
-                                onTap: () => _showAlbumDetails(album),
-                                onLongPress: () => _showAlbumOptions(album),
-                                child: Card(
-                                  child: Column(
-                                    children: [
-                                      Expanded(
-                                        child: album['coverUrl'] != null &&
-                                                album['coverUrl']
-                                                    .startsWith('http')
-                                            ? Image.network(
-                                                album['coverUrl'], // Use NetworkImage for URLs
-                                                fit: BoxFit.cover,
-                                              )
-                                            : Image.file(
-                                                File(album['coverUrl']), // Use FileImage for local paths
-                                                fit: BoxFit.cover,
-                                              ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                              },
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-        ),
-        if (_isProcessing)
-          Positioned.fill(
-            child: Container(
-              color: Colors.black.withOpacity(0.5), // Semi-transparent overlay
-              child: Center(
-                child: AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return Transform.rotate(
-                      angle: _controller.value * 2 * pi, // Rotate 360 degrees
-                      child: child,
-                    );
-                  },
-                  child: Transform.scale(
-                    scale: 1.1, // Scale the image by 10% to "zoom in"
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(
-                        180,
-                      ), // Fully rounded corners
-                      child: Image.asset(
-                        'assets/album.png', // Path to your vinyl record image
-                        width: 200, // Adjust size as needed
-                        height: 200,
-                        fit: BoxFit.cover, // Ensure the image fits within the container
+                      ],
+                    ),
+          ),
+          if (_isProcessing)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.5), // Semi-transparent overlay
+                child: Center(
+                  child: AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, child) {
+                      return Transform.rotate(
+                        angle: _controller.value * 2 * pi, // Rotate 360 degrees
+                        child: child,
+                      );
+                    },
+                    child: Transform.scale(
+                      scale: 1.1, // Scale the image by 10% to "zoom in"
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          180,
+                        ), // Fully rounded corners
+                        child: Image.asset(
+                          'assets/album.png', // Path to your vinyl record image
+                          width: 200, // Adjust size as needed
+                          height: 200,
+                          fit: BoxFit.cover, // Ensure the image fits within the container
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

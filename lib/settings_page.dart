@@ -145,13 +145,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Future<void> _downloadCsvData() async {
-    // Implement CSV download logic here
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('CSV download functionality coming soon!')),
-    );
-  }
-
   Future<void> _signOut() async {
     await _auth.signOut();
     Navigator.of(context).pushReplacementNamed('/login');
@@ -159,11 +152,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Settings'),
-      ),
-      body: ListView(
+    return RefreshIndicator(
+      onRefresh: _loadUserData,
+      child: ListView(
         padding: EdgeInsets.all(16.0),
         children: [
           Column(
@@ -191,11 +182,6 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: Icon(Icons.lock),
             title: Text('Change Password'),
             onTap: _changePassword,
-          ),
-          ListTile(
-            leading: Icon(Icons.download),
-            title: Text('Download CSV Data'),
-            onTap: _downloadCsvData,
           ),
           ListTile(
             leading: Icon(Icons.logout),
