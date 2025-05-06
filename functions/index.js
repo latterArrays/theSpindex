@@ -80,3 +80,26 @@ exports.proxyDiscogs = onRequest(async (request, response) => {
         response.status(500).send("Error proxying request.");
     }
 });
+
+exports.proxyFirebaseStorage = onRequest(async (request, response) => {
+    const { url } = request.query;
+
+    if (!url) {
+        response.set("Access-Control-Allow-Origin", "*");
+        return response.status(400).send("Missing 'url' query parameter.");
+    }
+
+    try {
+        const apiResponse = await axios.get(url, {
+            responseType: "arraybuffer", // Handle binary data for images
+        });
+
+        response.set("Access-Control-Allow-Origin", "*");
+        response.set("Content-Type", apiResponse.headers["content-type"]);
+        response.status(apiResponse.status).send(apiResponse.data);
+    } catch (error) {
+        console.error("Error proxying Firebase Storage request:", error.message);
+        response.set("Access-Control-Allow-Origin", "*");
+        response.status(500).send("Error proxying Firebase Storage request.");
+    }
+});

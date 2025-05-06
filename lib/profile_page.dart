@@ -19,7 +19,6 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   late Future<DocumentSnapshot> _userDataFuture;
-  late Future<List<Map<String, dynamic>>> _albumListsFuture;
   late Stream<DocumentSnapshot> _userStream;
 
   @override
@@ -30,7 +29,6 @@ class _ProfilePageState extends State<ProfilePage> {
         .doc(widget.userId)
         .snapshots(); // Listen for real-time updates
     _userDataFuture = _fetchUserData();
-    _albumListsFuture = _fetchAlbumLists();
   }
 
   @override
@@ -51,26 +49,26 @@ class _ProfilePageState extends State<ProfilePage> {
     return FirebaseFirestore.instance.collection('users').doc(widget.userId).get();
   }
 
-  Future<List<Map<String, dynamic>>> _fetchAlbumLists() async {
-    final listsSnapshot = await FirebaseFirestore.instance
+  Stream<List<Map<String, dynamic>>> _fetchAlbumListsStream() {
+    return FirebaseFirestore.instance
         .collection('users')
         .doc(widget.userId)
         .collection('lists')
-        .get();
-
-    return listsSnapshot.docs.map((doc) {
-      final data = doc.data();
-      return {
-        'name': data['name'] ?? 'Unnamed List',
-        'count': (data['albums'] as List<dynamic>?)?.length ?? 0,
-      };
-    }).toList();
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'name': data['name'] ?? 'Unnamed List',
+          'count': (data['albums'] as List<dynamic>?)?.length ?? 0,
+        };
+      }).toList();
+    });
   }
 
   Future<void> _refreshUserData() async {
     setState(() {
       _userDataFuture = _fetchUserData();
-      _albumListsFuture = _fetchAlbumLists();
     });
   }
 
@@ -147,8 +145,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           SizedBox(height: 16),
                           Text('Album Lists:',
                               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          FutureBuilder<List<Map<String, dynamic>>>(
-                            future: _albumListsFuture,
+                          StreamBuilder<List<Map<String, dynamic>>>(
+                            stream: _fetchAlbumListsStream(),
                             builder: (context, albumListsSnapshot) {
                               if (albumListsSnapshot.connectionState == ConnectionState.waiting) {
                                 return Center(child: CircularProgressIndicator());

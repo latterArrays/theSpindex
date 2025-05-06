@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -14,6 +15,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String? _profilePictureUrl;
   String? _email;
+  final String _firebaseStorageUrl = "https://us-central1-thespindex-d6b69.cloudfunctions.net/proxyFirebaseStorage";
 
   @override
   void initState() {
@@ -44,25 +46,44 @@ class _SettingsPageState extends State<SettingsPage> {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
-      final file = File(image.path);
       final user = _auth.currentUser;
 
       if (user != null) {
         final storageRef = FirebaseStorage.instance
             .ref()
             .child('profile_pictures/${user.uid}');
-        await storageRef.putFile(file);
-        final downloadUrl = await storageRef.getDownloadURL();
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({'profilePicture': downloadUrl});
-        setState(() {
-          _profilePictureUrl = downloadUrl;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profile picture updated successfully!')),
-        );
+        
+        try {
+          String downloadUrl;
+
+          if (kIsWeb) {
+            // For web, use readAsBytes and putData
+            final imageBytes = await image.readAsBytes();
+            await storageRef.putData(imageBytes, SettableMetadata(contentType: 'image/jpeg'));
+            downloadUrl = await storageRef.getDownloadURL(); // Explicitly generate the download URL
+          } else {
+            // For mobile/desktop, use File and putFile
+            final file = File(image.path);
+            await storageRef.putFile(file, SettableMetadata(contentType: 'image/jpeg'));
+            downloadUrl = await storageRef.getDownloadURL();
+          }
+
+          // Update the user's profile picture URL in Firestore
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({'profilePicture': downloadUrl});
+          setState(() {
+            _profilePictureUrl = downloadUrl;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Profile picture updated successfully!')),
+          );
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update profile picture: $e')),
+          );
+        }
       }
     }
   }

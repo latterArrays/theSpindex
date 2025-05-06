@@ -139,11 +139,15 @@ Widget _buildLogo() {
             'createdAt': FieldValue.serverTimestamp(),
           });
 
-          await userDoc.collection('lists').add({
-            'name': 'My Collection',
-            'createdAt': FieldValue.serverTimestamp(),
-            'albums': [],
-          });
+          // Check if "My Collection" list already exists
+          final listsSnapshot = await userDoc.collection('lists').get();
+          if (!listsSnapshot.docs.any((doc) => doc.data()['name'] == 'My Collection')) {
+            await userDoc.collection('lists').add({
+              'name': 'My Collection',
+              'createdAt': FieldValue.serverTimestamp(),
+              'albums': [],
+            });
+          }
 
           _showToast("Profile initialized for user: ${user.uid}");
         }
@@ -214,11 +218,6 @@ Widget _buildLogo() {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    await userDoc.collection('lists').add({
-      'name': 'My Collection',
-      'createdAt': FieldValue.serverTimestamp(),
-      'albums': [],
-    });
   }
 
   // Utility method to validate email
