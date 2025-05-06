@@ -21,15 +21,22 @@ exports.proxyDiscogs = onRequest(async (request, response) => {
     }
 
     try {
-        const url = `https://api.discogs.com/${endpoint}`;
+        let url;
+        if (endpoint.startsWith("http")) {
+            // Handle full image URLs
+            url = endpoint;
+        } else {
+            // Handle Discogs API endpoints
+            url = `https://api.discogs.com/${endpoint}`;
+        }
+
         const discogsKey = process.env.DISCOGS_KEY;
         const discogsSecret = process.env.DISCOGS_SECRET;
         const userAgent = "TheSpindex/1.0 +https://thespindex-d6b69.web.app/"; // Replace with your own user agent
 
-        console.log("Making request to Discogs API:");
+        console.log("Making request to Discogs API or image URL:");
         console.log(`URL: ${url}`);
         console.log(`Query Parameters: ${JSON.stringify(queryParams)}`);
-        console.log(`Headers: Authorization: Discogs key=${discogsKey}, secret=${discogsSecret}, User-Agent: ${userAgent}`);
 
         const apiResponse = await axios.get(url, {
             headers: {
@@ -38,22 +45,29 @@ exports.proxyDiscogs = onRequest(async (request, response) => {
                 "User-Agent": userAgent,
             },
             params: queryParams,
+            responseType: endpoint.startsWith("http") ? "arraybuffer" : "json", // Handle image responses
         });
 
-        console.log("Discogs API response received:");
+        console.log("Response received:");
         console.log(`Status: ${apiResponse.status}`);
-        console.log(`Data: ${JSON.stringify(apiResponse.data)}`);
 
         // Add CORS headers to the response
         response.set("Access-Control-Allow-Origin", "*");
         response.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         response.set("Access-Control-Allow-Headers", "Content-Type");
 
-        response.status(apiResponse.status).json(apiResponse.data);
+        if (endpoint.startsWith("http")) {
+            // Handle image responses
+            response.set("Content-Type", apiResponse.headers["content-type"]);
+            response.status(apiResponse.status).send(apiResponse.data);
+        } else {
+            // Handle JSON responses
+            response.status(apiResponse.status).json(apiResponse.data);
+        }
     } catch (error) {
         console.error("Error proxying request:", error.message);
         if (error.response) {
-            console.error("Discogs API Error Response:");
+            console.error("Error Response:");
             console.error(`Status: ${error.response.status}`);
             console.error(`Data: ${JSON.stringify(error.response.data)}`);
         }
@@ -62,7 +76,7 @@ exports.proxyDiscogs = onRequest(async (request, response) => {
         response.set("Access-Control-Allow-Origin", "*");
         response.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         response.set("Access-Control-Allow-Headers", "Content-Type");
-        
+
         response.status(500).send("Error proxying request.");
     }
 });

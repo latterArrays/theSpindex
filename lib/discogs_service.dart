@@ -22,7 +22,11 @@ class DiscogsService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['results'] != null && data['results'].isNotEmpty) {
-          return List<Map<String, dynamic>>.from(data['results']);
+          return List<Map<String, dynamic>>.from(data['results']).map((album) {
+            album['cover_image'] = '$_firebaseFunctionUrl?endpoint=${album['cover_image']}'; // Prepend proxy URL
+            return album;
+          }).toList();
+          
         }
       } else {
         print("Error: ${response.statusCode} - ${response.reasonPhrase}");

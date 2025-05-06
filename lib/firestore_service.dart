@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart'; // Import for debugPrint
+import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -54,5 +57,27 @@ class FirestoreService {
     final albums = List<Map<String, dynamic>>.from(snapshot.data()?['albums'] ?? []);
     final updatedAlbums = albums.where((album) => album['id'].toString() != albumId).toList();
     await listRef.update({'albums': updatedAlbums});
+  }
+}
+
+// Utility function to fetch Discogs image URLs
+Future<String> fetchDiscogsImageUrl(String endpoint) async {
+  final remoteConfig = FirebaseRemoteConfig.instance;
+  final discogsKey = remoteConfig.getString('DISCOGS_KEY');
+  final discogsSecret = remoteConfig.getString('DISCOGS_SECRET');
+
+  final url = Uri.parse('https://api.discogs.com/$endpoint');
+  final response = await http.get(
+    url,
+    headers: {
+      'Authorization': 'Discogs key=$discogsKey, secret=$discogsSecret',
+    },
+  );
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    return data['images'][0]['uri']; // Adjust based on Discogs API response structure
+  } else {
+    throw Exception('Failed to fetch image URL: ${response.statusCode}');
   }
 }

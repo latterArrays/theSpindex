@@ -9,9 +9,12 @@ import 'openai_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart'; // Import for launching URLs
 import 'dart:io'; // Import for File
+import 'dart:typed_data'; // Import for Uint8List
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:firebase_storage/firebase_storage.dart'; // Import for Firebase Storage
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SetFavoriteAlbumButton extends StatefulWidget {
   final String userId;
@@ -33,7 +36,11 @@ class _SetFavoriteAlbumButtonState extends State<SetFavoriteAlbumButton> {
   }
 
   Future<void> _checkIfFavorite() async {
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(widget.userId).get();
+    final userDoc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.userId)
+            .get();
     final favoriteAlbum = userDoc.data()?['favoriteAlbum'];
     if (favoriteAlbum == widget.album['title']) {
       setState(() {
@@ -44,15 +51,20 @@ class _SetFavoriteAlbumButtonState extends State<SetFavoriteAlbumButton> {
 
   Future<void> _setFavoriteAlbum() async {
     try {
-      await FirebaseFirestore.instance.collection('users').doc(widget.userId).update({
-        'favoriteAlbum': widget.album['title'],
-        'favoriteAlbumCoverUrl': widget.album['coverUrl'],
-      });
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .update({
+            'favoriteAlbum': widget.album['title'],
+            'favoriteAlbumCoverUrl': widget.album['coverUrl'],
+          });
       setState(() {
         _isFavorite = true;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Favorite album set to ${widget.album['title']}!')),
+        SnackBar(
+          content: Text('Favorite album set to ${widget.album['title']}!'),
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -64,12 +76,16 @@ class _SetFavoriteAlbumButtonState extends State<SetFavoriteAlbumButton> {
   @override
   Widget build(BuildContext context) {
     return ElevatedButton.icon(
-      icon: Icon(
-        Icons.favorite,
-        color: _isFavorite ? Colors.red : Colors.grey,
-      ),
+      icon: Icon(Icons.favorite, color: _isFavorite ? Colors.red : Colors.grey),
       label: Text('Set Favorite'),
-      onPressed: _setFavoriteAlbum,
+      onPressed: () async {
+        await _setFavoriteAlbum();
+        if (mounted) {
+          setState(() {
+            _isFavorite = true; // Update the heart color to red
+          });
+        }
+      },
     );
   }
 }
@@ -90,7 +106,8 @@ class _GalleryPageState extends State<GalleryPage>
   final PageStorageBucket _bucket = PageStorageBucket();
   final FirestoreService _firestoreService = FirestoreService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
+  final String _firebaseFunctionUrl =
+      'https://proxydiscogs-oozhjhvasa-uc.a.run.app?endpoint=';
   String? _selectedListId;
   List<Map<String, dynamic>> _albums = [];
   List<Map<String, String>> _listNames = [];
@@ -139,24 +156,29 @@ class _GalleryPageState extends State<GalleryPage>
                     await _handleManualSearch(searchController.text);
                   },
                 ),
+              ],
+            ),
+          ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    await _handleManualSearch(searchController.text);
+                  },
+                  child: Text("Text Search"),
+                ),
                 ElevatedButton.icon(
                   onPressed: _handleImageSearch,
                   icon: Icon(Icons.camera_alt),
                   label: Text("Image Search"),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () async {
-                await _handleManualSearch(searchController.text);
-              },
-              child: Text("Search"),
             ),
           ],
         );
@@ -213,24 +235,25 @@ class _GalleryPageState extends State<GalleryPage>
     // Show a dialog to let the user choose between camera and gallery
     final ImageSource? source = await showDialog<ImageSource>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Select Image Source"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.camera_alt),
-              title: Text("Take a Picture"),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
+      builder:
+          (context) => AlertDialog(
+            title: Text("Select Image Source"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(Icons.camera_alt),
+                  title: Text("Take a Picture"),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                ListTile(
+                  leading: Icon(Icons.photo_library),
+                  title: Text("Choose from Gallery"),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+              ],
             ),
-            ListTile(
-              leading: Icon(Icons.photo_library),
-              title: Text("Choose from Gallery"),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
 
     if (source == null) {
@@ -257,14 +280,21 @@ class _GalleryPageState extends State<GalleryPage>
     }
 
     try {
-      // Compress or convert the image to JPEG
-      final compressedBytes = await FlutterImageCompress.compressWithFile(
-        image.path,
-        format: CompressFormat.jpeg, // Convert to JPEG
-        quality: 90, // Adjust quality as needed
-      );
+      Uint8List? imageBytes;
 
-      if (compressedBytes == null || compressedBytes.isEmpty) {
+      if (kIsWeb) {
+        // For web, read the image as bytes directly
+        imageBytes = await image.readAsBytes();
+      } else if (Platform.isAndroid || Platform.isIOS) {
+        // For mobile platforms, compress the image
+        imageBytes = await FlutterImageCompress.compressWithFile(
+          image.path,
+          format: CompressFormat.jpeg, // Convert to JPEG
+          quality: 90, // Adjust quality as needed
+        );
+      }
+
+      if (imageBytes == null || imageBytes.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Failed to process the image.")),
@@ -274,7 +304,7 @@ class _GalleryPageState extends State<GalleryPage>
       }
 
       // Encode the image to a base64 string
-      final base64Image = base64Encode(compressedBytes);
+      final base64Image = base64Encode(imageBytes);
 
       // Send the base64-encoded image to OpenAI for metadata extraction
       final openAIService = OpenAIService();
@@ -296,8 +326,6 @@ class _GalleryPageState extends State<GalleryPage>
         }
         return;
       }
-
-      // debugPrint("Extracted Metadata: $metadata"); // Commented out to avoid exposing sensitive data
 
       // Parse metadata as JSON
       final parsedMetadata = jsonDecode(metadata) as Map<String, dynamic>;
@@ -392,10 +420,11 @@ class _GalleryPageState extends State<GalleryPage>
                                 'artist': artistName,
                                 'year': album['year'],
                                 'genre': album['genre'],
-                                'coverUrl': album['cover_image'],
+                                'coverUrl':
+                                    album['cover_image'], // Use the URL directly
                                 'url': albumUri,
                               };
-
+                              debugPrint("Album Search Result Image URL: $album['cover_image']");
                               debugPrint("Selected Album: $selectedAlbum");
 
                               if (_selectedListId != null) {
@@ -448,132 +477,138 @@ class _GalleryPageState extends State<GalleryPage>
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: Text("Add Album Manually"),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: titleController,
-                    decoration: InputDecoration(labelText: "Album Title"),
-                  ),
-                  TextField(
-                    controller: artistController,
-                    decoration: InputDecoration(labelText: "Artist"),
-                  ),
-                  TextField(
-                    controller: yearController,
-                    decoration: InputDecoration(labelText: "Year"),
-                    keyboardType: TextInputType.number,
-                  ),
-                  TextField(
-                    controller: genreController,
-                    decoration: InputDecoration(labelText: "Genre"),
-                  ),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () async {
-                      // Dismiss the keyboard before opening the image picker
-                      FocusScope.of(context).unfocus();
+      builder:
+          (context) => StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: Text("Add Album Manually"),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: titleController,
+                        decoration: InputDecoration(labelText: "Album Title"),
+                      ),
+                      TextField(
+                        controller: artistController,
+                        decoration: InputDecoration(labelText: "Artist"),
+                      ),
+                      TextField(
+                        controller: yearController,
+                        decoration: InputDecoration(labelText: "Year"),
+                        keyboardType: TextInputType.number,
+                      ),
+                      TextField(
+                        controller: genreController,
+                        decoration: InputDecoration(labelText: "Genre"),
+                      ),
+                      SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () async {
+                          // Dismiss the keyboard before opening the image picker
+                          FocusScope.of(context).unfocus();
 
-                      final XFile? image = await _picker.pickImage(
-                        source: ImageSource.gallery,
-                      );
-                      if (image != null) {
-                        setState(() {
-                          imagePath = image.path;
-                        });
+                          final XFile? image = await _picker.pickImage(
+                            source: ImageSource.gallery,
+                          );
+                          if (image != null) {
+                            setState(() {
+                              imagePath = image.path;
+                            });
+                          }
+                        },
+                        child: Text(
+                          imagePath == null ? "Select Image" : "Reselect Image",
+                        ),
+                      ),
+                      if (imagePath != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              File(imagePath!),
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("Cancel"),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      if (titleController.text.isNotEmpty &&
+                          artistController.text.isNotEmpty &&
+                          yearController.text.isNotEmpty &&
+                          genreController.text.isNotEmpty &&
+                          imagePath != null) {
+                        final user = FirebaseAuth.instance.currentUser;
+                        if (user != null) {
+                          // Upload the image to Firebase Storage
+                          final storageRef = FirebaseStorage.instance.ref().child(
+                            'album_covers/${DateTime.now().millisecondsSinceEpoch}',
+                          );
+                          final uploadTask = await storageRef.putFile(
+                            File(imagePath!),
+                          );
+                          final coverUrl =
+                              await uploadTask.ref.getDownloadURL();
+
+                          // Create the album object
+                          final album = {
+                            'id':
+                                DateTime.now().millisecondsSinceEpoch
+                                    .toString(),
+                            'title': titleController.text,
+                            'artist': artistController.text,
+                            'year': yearController.text,
+                            'genre': genreController.text,
+                            'coverUrl': coverUrl, // Use the uploaded image URL
+                          };
+
+                          if (_selectedListId != null) {
+                            await _firestoreService.upsertAlbum(
+                              widget.userId,
+                              _selectedListId!,
+                              album,
+                            );
+                            Navigator.pop(context); // Close the modal first
+                            setState(() {
+                              _isProcessing =
+                                  true; // Show spinner while reloading
+                            });
+                            await _loadAlbums(); // Refresh the albums grid
+                            setState(() {
+                              _isProcessing =
+                                  false; // Hide spinner after reload
+                            });
+                          }
+                        }
+                      } else {
+                        // Show an error message if any field is missing
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              "Please fill all fields and select an image.",
+                            ),
+                          ),
+                        );
                       }
                     },
-                    child: Text(
-                      imagePath == null ? "Select Image" : "Reselect Image",
-                    ),
+                    child: Text("Add Album"),
                   ),
-                  if (imagePath != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          File(imagePath!),
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
                 ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text("Cancel"),
-              ),
-              TextButton(
-                onPressed: () async {
-                  if (titleController.text.isNotEmpty &&
-                      artistController.text.isNotEmpty &&
-                      yearController.text.isNotEmpty &&
-                      genreController.text.isNotEmpty &&
-                      imagePath != null) {
-                    final user = FirebaseAuth.instance.currentUser;
-                    if (user != null) {
-                      // Upload the image to Firebase Storage
-                      final storageRef = FirebaseStorage.instance.ref().child(
-                        'album_covers/${DateTime.now().millisecondsSinceEpoch}',
-                      );
-                      final uploadTask = await storageRef.putFile(
-                        File(imagePath!),
-                      );
-                      final coverUrl = await uploadTask.ref.getDownloadURL();
-
-                      // Create the album object
-                      final album = {
-                        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-                        'title': titleController.text,
-                        'artist': artistController.text,
-                        'year': yearController.text,
-                        'genre': genreController.text,
-                        'coverUrl': coverUrl, // Use the uploaded image URL
-                      };
-
-                      if (_selectedListId != null) {
-                        await _firestoreService.upsertAlbum(
-                          widget.userId,
-                          _selectedListId!,
-                          album,
-                        );
-                        Navigator.pop(context); // Close the modal first
-                        setState(() {
-                          _isProcessing = true; // Show spinner while reloading
-                        });
-                        await _loadAlbums(); // Refresh the albums grid
-                        setState(() {
-                          _isProcessing = false; // Hide spinner after reload
-                        });
-                      }
-                    }
-                  } else {
-                    // Show an error message if any field is missing
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          "Please fill all fields and select an image.",
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: Text("Add Album"),
-              ),
-            ],
-          );
-        },
-      ),
+              );
+            },
+          ),
     );
   }
 
@@ -824,20 +859,20 @@ class _GalleryPageState extends State<GalleryPage>
                               .collection('users')
                               .doc(widget.userId)
                               .update({
-                            'favoriteAlbum': album['title'],
-                            'favoriteAlbumCoverUrl': album['coverUrl'],
-                          });
+                                'favoriteAlbum': album['title'],
+                                'favoriteAlbumCoverUrl': album['coverUrl'],
+                              });
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                  'Favorite album set to ${album['title']}!'),
+                                'Favorite album set to ${album['title']}!',
+                              ),
                             ),
                           );
                         } catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(
-                                  'Failed to set favorite album: $e'),
+                              content: Text('Failed to set favorite album: $e'),
                             ),
                           );
                         }
@@ -854,7 +889,9 @@ class _GalleryPageState extends State<GalleryPage>
                     ElevatedButton.icon(
                       icon: Icon(Icons.delete),
                       label: Text("Delete"),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                      ),
                       onPressed: () {
                         Navigator.pop(context);
                         _confirmDeleteAlbum(album);
@@ -1016,7 +1053,9 @@ class _GalleryPageState extends State<GalleryPage>
                 if (_selectedListId != null) {
                   // Ensure album ID is treated as a string
                   final albumId = album['id'].toString();
-                  print('Deleting album with ID: $albumId from list: $_selectedListId');
+                  print(
+                    'Deleting album with ID: $albumId from list: $_selectedListId',
+                  );
                   await _firestoreService.deleteAlbum(
                     widget.userId,
                     _selectedListId!,
@@ -1123,7 +1162,8 @@ class _GalleryPageState extends State<GalleryPage>
                       return DropdownMenuItem(
                         value: list['id'],
                         child: SizedBox(
-                          width: 200, // Set a fixed width for the dropdown items
+                          width:
+                              200, // Set a fixed width for the dropdown items
                           child: Text(
                             list['name']!,
                             overflow:
@@ -1176,32 +1216,49 @@ class _GalleryPageState extends State<GalleryPage>
                                     labelText: "Edit List Name",
                                   ),
                                 ),
-                                TextButton.icon(
-                                  icon: Icon(Icons.check, color: Colors.green),
-                                  label: Text("Done"),
-                                  onPressed: () async {
-                                    final newName =
-                                        listNameController.text.trim();
-                                    if (newName.isNotEmpty &&
-                                        _selectedListId != null) {
-                                      await _firestoreService.setList(
-                                        widget.userId,
-                                        _selectedListId!,
-                                        name: newName,
-                                      );
-                                      await _loadLists(); // Reload lists to reflect the updated name
-                                    }
-                                    Navigator.pop(
-                                      context,
-                                    ); // Close the settings dialog
-                                  },
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  onPressed: _showDeleteListConfirmation,
-                                ),
                               ],
                             ),
+                            actions: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  ElevatedButton.icon(
+                                    icon: Icon(Icons.delete),
+                                    label: Text("Delete List"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                    onPressed: _showDeleteListConfirmation,
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                          Theme.of(
+                                            context,
+                                          ).primaryColor, // Solid color background
+                                    ),
+                                    onPressed: () async {
+                                      final newName =
+                                          listNameController.text.trim();
+                                      if (newName.isNotEmpty &&
+                                          _selectedListId != null) {
+                                        await _firestoreService.setList(
+                                          widget.userId,
+                                          _selectedListId!,
+                                          name: newName,
+                                        );
+                                        await _loadLists(); // Reload lists to reflect the updated name
+                                      }
+                                      Navigator.pop(
+                                        context,
+                                      ); // Close the settings dialog
+                                    },
+                                    child: Text("Done"),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                     );
                   },
@@ -1238,9 +1295,15 @@ class _GalleryPageState extends State<GalleryPage>
                                     onTap: _showAddAlbumModal,
                                     child: LayoutBuilder(
                                       builder: (context, constraints) {
-                                        final cellSize = constraints.maxWidth; // Use the cell's width as the base size
-                                        final spinnerSize = cellSize * 0.8; // Spinner size is 80% of the cell size
-                                        final plusFontSize = cellSize * 0.3; // "+" font size is 30% of the cell size
+                                        final cellSize =
+                                            constraints
+                                                .maxWidth; // Use the cell's width as the base size
+                                        final spinnerSize =
+                                            cellSize *
+                                            0.8; // Spinner size is 80% of the cell size
+                                        final plusFontSize =
+                                            cellSize *
+                                            0.3; // "+" font size is 30% of the cell size
 
                                         return Stack(
                                           alignment: Alignment.center,
@@ -1248,34 +1311,61 @@ class _GalleryPageState extends State<GalleryPage>
                                             AnimatedBuilder(
                                               animation: _controller,
                                               builder: (context, child) {
-                                                final angle = _controller.value * 2 * pi; // Rotate 360 degrees
+                                                final angle =
+                                                    _controller.value *
+                                                    2 *
+                                                    pi; // Rotate 360 degrees
                                                 return Transform.rotate(
                                                   angle: angle,
                                                   child: Transform.scale(
-                                                    scale: 1, // Keep the spinner scale at 1
+                                                    scale:
+                                                        1, // Keep the spinner scale at 1
                                                     child: Center(
                                                       child: ClipRRect(
-                                                        borderRadius: BorderRadius.circular(spinnerSize / 2), // Fully rounded corners
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              spinnerSize / 2,
+                                                            ), // Fully rounded corners
                                                         child: Stack(
-                                                          alignment: Alignment.center, // Center the gradient and image
+                                                          alignment:
+                                                              Alignment
+                                                                  .center, // Center the gradient and image
                                                           children: [
                                                             Image.asset(
                                                               'assets/album.png', // Path to your vinyl record image
-                                                              width: spinnerSize,
-                                                              height: spinnerSize,
+                                                              width:
+                                                                  spinnerSize,
+                                                              height:
+                                                                  spinnerSize,
                                                               fit: BoxFit.cover,
                                                             ),
                                                             Container(
-                                                              width: spinnerSize,
-                                                              height: spinnerSize,
+                                                              width:
+                                                                  spinnerSize,
+                                                              height:
+                                                                  spinnerSize,
                                                               decoration: BoxDecoration(
                                                                 gradient: LinearGradient(
                                                                   colors: [
-                                                                    const Color.fromARGB(150, 2, 208, 184), // Semi-transparent teal
-                                                                    const Color.fromARGB(150, 250, 125, 0),  // Semi-transparent orange
+                                                                    const Color.fromARGB(
+                                                                      150,
+                                                                      2,
+                                                                      208,
+                                                                      184,
+                                                                    ), // Semi-transparent teal
+                                                                    const Color.fromARGB(
+                                                                      150,
+                                                                      250,
+                                                                      125,
+                                                                      0,
+                                                                    ), // Semi-transparent orange
                                                                   ],
-                                                                  begin: Alignment.topLeft,
-                                                                  end: Alignment.bottomRight,
+                                                                  begin:
+                                                                      Alignment
+                                                                          .topLeft,
+                                                                  end:
+                                                                      Alignment
+                                                                          .bottomRight,
                                                                 ),
                                                               ),
                                                             ),
@@ -1291,7 +1381,8 @@ class _GalleryPageState extends State<GalleryPage>
                                             Text(
                                               "+",
                                               style: TextStyle(
-                                                fontSize: plusFontSize, // Dynamically adjust font size
+                                                fontSize:
+                                                    plusFontSize, // Dynamically adjust font size
                                                 fontWeight: FontWeight.bold,
                                                 color: Colors.white,
                                               ),
@@ -1310,17 +1401,20 @@ class _GalleryPageState extends State<GalleryPage>
                                     child: Column(
                                       children: [
                                         Expanded(
-                                          child: album['coverUrl'] != null &&
-                                                  album['coverUrl']
-                                                      .startsWith('http')
-                                              ? Image.network(
-                                                  album['coverUrl'], // Use NetworkImage for URLs
-                                                  fit: BoxFit.cover,
-                                                )
-                                              : Image.file(
-                                                  File(album['coverUrl']), // Use FileImage for local paths
-                                                  fit: BoxFit.cover,
-                                                ),
+                                          child:
+                                              album['coverUrl'] != null &&
+                                                      album['coverUrl']
+                                                          .startsWith('http')
+                                                  ? Image.network(
+                                                    album['coverUrl'], // Use NetworkImage for URLs
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                  : Image.file(
+                                                    File(
+                                                      album['coverUrl'],
+                                                    ), // Use FileImage for local paths
+                                                    fit: BoxFit.cover,
+                                                  ),
                                         ),
                                       ],
                                     ),
@@ -1336,7 +1430,9 @@ class _GalleryPageState extends State<GalleryPage>
           if (_isProcessing)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.5), // Semi-transparent overlay
+                color: Colors.black.withOpacity(
+                  0.5,
+                ), // Semi-transparent overlay
                 child: Center(
                   child: AnimatedBuilder(
                     animation: _controller,
@@ -1356,7 +1452,9 @@ class _GalleryPageState extends State<GalleryPage>
                           'assets/album.png', // Path to your vinyl record image
                           width: 200, // Adjust size as needed
                           height: 200,
-                          fit: BoxFit.cover, // Ensure the image fits within the container
+                          fit:
+                              BoxFit
+                                  .cover, // Ensure the image fits within the container
                         ),
                       ),
                     ),
