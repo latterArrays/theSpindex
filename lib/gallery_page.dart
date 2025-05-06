@@ -171,58 +171,52 @@ class _GalleryPageState extends State<GalleryPage>
             ),
           ),
           actions: [
-            Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size(160, 40),
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                      icon: Icon(Icons.cancel),
-                      label: Text("Cancel"),
-                    ),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size(160, 40),
-                      ),
-                      onPressed: () async {
-                        await _handleManualSearch(searchController.text);
-                      },
-                      icon: Icon(Icons.search),
-                      label: Text("Search"),
-                    ),
-                  ],
+  Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,              children: [
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: Size(180, 40),
+                  ),
+                  onPressed: () async {
+                    await _handleManualSearch(searchController.text);
+                  },
+                  icon: Icon(Icons.search),
+                  label: Text("Search"),
                 ),
-                SizedBox(height: 16), // Add spacing between rows
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size(160, 40),
-                      ),
-                      onPressed: _handleImageSearch,
-                      icon: Icon(Icons.camera_alt),
-                      label: Text("Image Search"),
-                    ),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size(160, 40),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context); // Close the current modal
-                        _showManualAddAlbumModal(); // Open the manual modal
-                      },
-                      icon: Icon(Icons.upload_file),
-                      label: Text("Manual Upload"),
-                    ),
-                  ],
+                SizedBox(height: 8), // Add spacing between buttons
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: Size(180, 40),
+                  ),
+                  onPressed: _handleImageSearch,
+                  icon: Icon(Icons.camera_alt),
+                  label: Text("Image Search"),
+                ),
+                SizedBox(height: 8), // Add spacing between buttons
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: Size(180, 40),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context); // Close the current modal
+                    _showManualAddAlbumModal(); // Open the manual modal
+                  },
+                  icon: Icon(Icons.upload_file),
+                  label: Text("Manual Upload"),
+                ),
+                SizedBox(height: 8), // Add spacing between buttons
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: Size(180, 40),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.cancel),
+                  label: Text("Cancel"),
                 ),
               ],
             ),
+          ),  
           ],
         );
       },
