@@ -85,6 +85,7 @@ class _SetFavoriteAlbumButtonState extends State<SetFavoriteAlbumButton> {
             _isFavorite = true; // Update the heart color to red
           });
         }
+        Navigator.pop(context); // Dismiss the modal after setting favorite
       },
     );
   }
@@ -160,23 +161,39 @@ class _GalleryPageState extends State<GalleryPage>
             ),
           ),
           actions: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            Column(
               children: [
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text("Cancel"),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(150, 40),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: Text("Cancel"),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(150, 40),
+                      ),
+                      onPressed: () async {
+                        await _handleManualSearch(searchController.text);
+                      },
+                      child: Text("Search"),
+                    ),
+                  ],
                 ),
-                ElevatedButton(
-                  onPressed: () async {
-                    await _handleManualSearch(searchController.text);
-                  },
-                  child: Text("Text Search"),
-                ),
-                ElevatedButton.icon(
-                  onPressed: _handleImageSearch,
-                  icon: Icon(Icons.camera_alt),
-                  label: Text("Image Search"),
+                SizedBox(height: 16), // Add spacing between rows
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _handleImageSearch,
+                      icon: Icon(Icons.camera_alt),
+                      label: Text("Image Search"),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -769,18 +786,18 @@ class _GalleryPageState extends State<GalleryPage>
                 MediaQuery.of(context).size.height * 0.9, // 90% of the height
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+                children: [
                 // Large thumbnail at the top
                 Center(
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      album['coverUrl'],
-                      height:
-                          MediaQuery.of(context).size.height *
-                          0.35, // 35% height
-                      fit: BoxFit.cover,
-                    ),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    album['coverUrl'],
+                    height:
+                      MediaQuery.of(context).size.height *
+                      0.35, // 35% height
+                    fit: BoxFit.cover,
+                  ),
                   ),
                 ),
                 // Album metadata
@@ -801,89 +818,107 @@ class _GalleryPageState extends State<GalleryPage>
                 // Tracklist (if available)
                 if (tracklist.isNotEmpty)
                   Expanded(
-                    child: ListView.separated(
-                      itemCount: tracklist.length,
-                      itemBuilder: (context, index) {
-                        final track = tracklist[index];
-                        return ListTile(
-                          dense: true, // Make the list items more compact
-                          leading: Text(
-                            track['position'] ?? '',
-                            style: TextStyle(
-                              fontSize: 14,
-                            ), // Slightly smaller font
-                          ),
-                          title: Text(
-                            track['title'] ?? 'Unknown Track',
-                            style: TextStyle(
-                              fontSize: 16,
-                            ), // Smaller font for title
-                          ),
-                        );
-                      },
-                      separatorBuilder:
-                          (context, index) => Divider(
-                            thickness: 1, // Add a horizontal line between items
-                            color: Colors.grey,
-                          ),
-                    ),
+                  child: ListView.separated(
+                    itemCount: tracklist.length,
+                    itemBuilder: (context, index) {
+                    final track = tracklist[index];
+                    return ListTile(
+                      dense: true, // Make the list items more compact
+                      leading: Text(
+                      track['position'] ?? '',
+                      style: TextStyle(
+                        fontSize: 14,
+                      ), // Slightly smaller font
+                      ),
+                      title: Text(
+                      track['title'] ?? 'Unknown Track',
+                      style: TextStyle(
+                        fontSize: 16,
+                      ), // Smaller font for title
+                      ),
+                    );
+                    },
+                    separatorBuilder:
+                      (context, index) => Divider(
+                      thickness: 1, // Add a horizontal line between items
+                      color: Colors.grey,
+                      ),
+                  ),
                   ),
                 if (tracklist.isEmpty)
                   Expanded(
-                    child: Center(
-                      child: Text(
-                        "No tracklist available.",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
+                  child: Center(
+                    child: Text(
+                    "No tracklist available.",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontStyle: FontStyle.italic,
+                    ),
                     ),
                   ),
+                  ),
                 SizedBox(height: 16),
-                // Buttons arranged in a row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                // Buttons arranged in a grid (2 x 2)
+                Column(
                   children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
                     ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(150, 40),
+                      ),
+                      icon: Icon(Icons.favorite),
+                      label: Text("Set Favorite"),
+                      onPressed: () async {
+                      try {
+                        await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(widget.userId)
+                          .update({
+                          'favoriteAlbum': album['title'],
+                          'favoriteAlbumCoverUrl': album['coverUrl'],
+                          });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                          'Favorite album set to ${album['title']}!',
+                          ),
+                        ),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Failed to set favorite album: $e'),
+                        ),
+                        );
+                      }
+                      },
+                    ),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(150, 40),
+                      ),
                       icon: Icon(Icons.music_note),
                       label: Text("Discogs"),
                       onPressed: () => openUrl(url),
                     ),
+                    ],
+                  ),
+                  SizedBox(height: 8), // Add spacing between rows
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
                     ElevatedButton.icon(
-                      icon: Icon(Icons.favorite),
-                      label: Text("Set Favorite"),
-                      onPressed: () async {
-                        try {
-                          await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(widget.userId)
-                              .update({
-                                'favoriteAlbum': album['title'],
-                                'favoriteAlbumCoverUrl': album['coverUrl'],
-                              });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Favorite album set to ${album['title']}!',
-                              ),
-                            ),
-                          );
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Failed to set favorite album: $e'),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(150, 40),
+                      ),
                       icon: Icon(Icons.edit),
                       label: Text("Edit"),
                       onPressed: () {
-                        Navigator.pop(context);
-                        _showEditAlbumDialog(album);
+                      Navigator.pop(context);
+                      _showEditAlbumDialog(album);
                       },
                     ),
                     ElevatedButton.icon(
@@ -891,12 +926,15 @@ class _GalleryPageState extends State<GalleryPage>
                       label: Text("Delete"),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.redAccent,
+                        minimumSize: Size(150, 40),
                       ),
                       onPressed: () {
-                        Navigator.pop(context);
-                        _confirmDeleteAlbum(album);
+                      Navigator.pop(context);
+                      _confirmDeleteAlbum(album);
                       },
                     ),
+                    ],
+                  ),
                   ],
                 ),
               ],

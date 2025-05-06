@@ -152,43 +152,48 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _loadUserData,
-      child: ListView(
-        padding: EdgeInsets.all(16.0),
-        children: [
-          Column(
-            children: [
-              CircleAvatar(
-                radius: 50,
-                backgroundImage: _profilePictureUrl != null
-                    ? NetworkImage(_profilePictureUrl!)
-                    : AssetImage('assets/defaultProfile.png') as ImageProvider,
-              ),
-              SizedBox(height: 8),
-              Text(
-                _email ?? 'Loading...',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 16),
-            ],
-          ),
-          ListTile(
-            leading: Icon(Icons.image),
-            title: Text('Change Profile Picture'),
-            onTap: _changeProfilePicture,
-          ),
-          ListTile(
-            leading: Icon(Icons.lock),
-            title: Text('Change Password'),
-            onTap: _changePassword,
-          ),
-          ListTile(
-            leading: Icon(Icons.logout),
-            title: Text('Sign Out'),
-            onTap: _signOut,
-          ),
-        ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Settings'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadUserData,
+        child: ListView(
+          padding: EdgeInsets.all(16.0),
+          children: [
+            Column(
+              children: [
+                CircleAvatar(
+                  radius: 50,
+                  backgroundImage: _profilePictureUrl != null
+                      ? NetworkImage(_profilePictureUrl!)
+                      : AssetImage('assets/defaultProfile.png') as ImageProvider,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  _email ?? 'Loading...',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 16),
+              ],
+            ),
+            ListTile(
+              leading: Icon(Icons.image),
+              title: Text('Change Profile Picture'),
+              onTap: _changeProfilePicture,
+            ),
+            ListTile(
+              leading: Icon(Icons.lock),
+              title: Text('Change Password'),
+              onTap: _changePassword,
+            ),
+            ListTile(
+              leading: Icon(Icons.logout),
+              title: Text('Sign Out'),
+              onTap: _signOut,
+            ),
+          ],
+        ),
       ),
     );
   }
