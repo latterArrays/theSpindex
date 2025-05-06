@@ -17,7 +17,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 // Conditional import for dart:html (web only)
 import 'unsupported_html_stub.dart'
-    if (dart.library.html) 'dart:html' as html; // Alias for dart:html
+    if (dart.library.html) 'dart:html'
+    as html; // Alias for dart:html
 
 class SetFavoriteAlbumButton extends StatefulWidget {
   final String userId;
@@ -113,10 +114,11 @@ class _GalleryPageState extends State<GalleryPage>
   final String _firebaseFunctionUrl =
       'https://proxydiscogs-oozhjhvasa-uc.a.run.app?endpoint=';
 
-  final String _firebaseStorageUrl = "https://us-central1-thespindex-d6b69.cloudfunctions.net/proxyFirebaseStorage";
+  final String _firebaseStorageUrl =
+      "https://us-central1-thespindex-d6b69.cloudfunctions.net/proxyFirebaseStorage";
   String? _selectedListId;
   List<Map<String, dynamic>> _albums = [];
-  
+
   List<Map<String, String>> _listNames = [];
   bool _loading = true;
   bool _isProcessing = false; // Add a state variable to track processing status
@@ -171,52 +173,45 @@ class _GalleryPageState extends State<GalleryPage>
             ),
           ),
           actions: [
-  Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,              children: [
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size(180, 40),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(minimumSize: Size(180, 40)),
+                    onPressed: () async {
+                      await _handleManualSearch(searchController.text);
+                    },
+                    icon: Icon(Icons.search),
+                    label: Text("Search"),
                   ),
-                  onPressed: () async {
-                    await _handleManualSearch(searchController.text);
-                  },
-                  icon: Icon(Icons.search),
-                  label: Text("Search"),
-                ),
-                SizedBox(height: 8), // Add spacing between buttons
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size(180, 40),
+                  SizedBox(height: 8), // Add spacing between buttons
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(minimumSize: Size(180, 40)),
+                    onPressed: _handleImageSearch,
+                    icon: Icon(Icons.camera_alt),
+                    label: Text("Image Search"),
                   ),
-                  onPressed: _handleImageSearch,
-                  icon: Icon(Icons.camera_alt),
-                  label: Text("Image Search"),
-                ),
-                SizedBox(height: 8), // Add spacing between buttons
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size(180, 40),
+                  SizedBox(height: 8), // Add spacing between buttons
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(minimumSize: Size(180, 40)),
+                    onPressed: () {
+                      Navigator.pop(context); // Close the current modal
+                      _showManualAddAlbumModal(); // Open the manual modal
+                    },
+                    icon: Icon(Icons.upload_file),
+                    label: Text("Manual Upload"),
                   ),
-                  onPressed: () {
-                    Navigator.pop(context); // Close the current modal
-                    _showManualAddAlbumModal(); // Open the manual modal
-                  },
-                  icon: Icon(Icons.upload_file),
-                  label: Text("Manual Upload"),
-                ),
-                SizedBox(height: 8), // Add spacing between buttons
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size(180, 40),
+                  SizedBox(height: 8), // Add spacing between buttons
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(minimumSize: Size(180, 40)),
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.cancel),
+                    label: Text("Cancel"),
                   ),
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.cancel),
-                  label: Text("Cancel"),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),  
           ],
         );
       },
@@ -560,10 +555,15 @@ class _GalleryPageState extends State<GalleryPage>
                                     'album_covers/${DateTime.now().millisecondsSinceEpoch}',
                                   );
                               final imageBytes = await image.readAsBytes();
-                              await storageRef.putData(imageBytes, SettableMetadata(contentType: 'image/jpeg'));
-                              final coverUrl = await storageRef.getDownloadURL();
+                              await storageRef.putData(
+                                imageBytes,
+                                SettableMetadata(contentType: 'image/jpeg'),
+                              );
+                              final coverUrl =
+                                  await storageRef.getDownloadURL();
                               setState(() {
-                                imagePath = coverUrl; // Use the proxied URL for web
+                                imagePath =
+                                    coverUrl; // Use the proxied URL for web
                               });
                             } else {
                               setState(() {
@@ -602,75 +602,84 @@ class _GalleryPageState extends State<GalleryPage>
                   ),
                 ),
                 actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("Cancel"),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      if (titleController.text.isNotEmpty &&
-                          artistController.text.isNotEmpty &&
-                          yearController.text.isNotEmpty &&
-                          genreController.text.isNotEmpty &&
-                          imagePath != null) {
-                        final user = FirebaseAuth.instance.currentUser;
-                        if (user != null) {
-                          // Upload the image to Firebase Storage
-                          final storageRef = FirebaseStorage.instance.ref().child(
-                            'album_covers/${DateTime.now().millisecondsSinceEpoch}',
-                          );
-                          final coverUrl =
-                              kIsWeb
-                                  ? imagePath!
-                                  : await storageRef
-                                      .putFile(io.File(imagePath!))
-                                      .then(
-                                        (task) => task.ref.getDownloadURL(),
-                                      );
+                  Center(
+                    child: Column (
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(minimumSize: Size(180, 40)),
+                        onPressed: () async {
+                          if (titleController.text.isNotEmpty &&
+                              artistController.text.isNotEmpty &&
+                              yearController.text.isNotEmpty &&
+                              genreController.text.isNotEmpty &&
+                              imagePath != null) {
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user != null) {
+                              // Upload the image to Firebase Storage
+                              final storageRef = FirebaseStorage.instance.ref().child(
+                                'album_covers/${DateTime.now().millisecondsSinceEpoch}',
+                              );
+                              final coverUrl =
+                                  kIsWeb
+                                      ? imagePath!
+                                      : await storageRef
+                                          .putFile(io.File(imagePath!))
+                                          .then(
+                                            (task) => task.ref.getDownloadURL(),
+                                          );
 
-                          // Create the album object
-                          final album = {
-                            'id':
-                                DateTime.now().millisecondsSinceEpoch
-                                    .toString(),
-                            'title': titleController.text,
-                            'artist': artistController.text,
-                            'year': yearController.text,
-                            'genre': genreController.text,
-                            'coverUrl': coverUrl, // Use the uploaded image URL
-                          };
+                              // Create the album object
+                              final album = {
+                                'id':
+                                    DateTime.now().millisecondsSinceEpoch
+                                        .toString(),
+                                'title': titleController.text,
+                                'artist': artistController.text,
+                                'year': yearController.text,
+                                'genre': genreController.text,
+                                'coverUrl': coverUrl, // Use the uploaded image URL
+                              };
 
-                          if (_selectedListId != null) {
-                            await _firestoreService.upsertAlbum(
-                              widget.userId,
-                              _selectedListId!,
-                              album,
+                              if (_selectedListId != null) {
+                                await _firestoreService.upsertAlbum(
+                                  widget.userId,
+                                  _selectedListId!,
+                                  album,
+                                );
+                                Navigator.pop(context); // Close the modal first
+                                setState(() {
+                                  _isProcessing =
+                                      true; // Show spinner while reloading
+                                });
+                                await _loadAlbums(); // Refresh the albums grid
+                                setState(() {
+                                  _isProcessing =
+                                      false; // Hide spinner after reload
+                                });
+                              }
+                            }
+                          } else {
+                            // Show an error message if any field is missing
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Please fill all fields and select an image.",
+                                ),
+                              ),
                             );
-                            Navigator.pop(context); // Close the modal first
-                            setState(() {
-                              _isProcessing =
-                                  true; // Show spinner while reloading
-                            });
-                            await _loadAlbums(); // Refresh the albums grid
-                            setState(() {
-                              _isProcessing =
-                                  false; // Hide spinner after reload
-                            });
                           }
-                        }
-                      } else {
-                        // Show an error message if any field is missing
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              "Please fill all fields and select an image.",
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: Text("Add Album"),
-                  ),
+                        },
+                        child: Text("Add Album"),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(minimumSize: Size(180, 40)),
+                        onPressed: () => Navigator.pop(context),
+                        child: Text("Cancel"),
+                      ),
+                    ]
+                  )
+                  )
                 ],
               );
             },
@@ -808,7 +817,7 @@ class _GalleryPageState extends State<GalleryPage>
   }
 
   Future<void> _showAlbumDetails(Map<String, dynamic> album) async {
-        final url = album['url']; // Replace with the actual URL
+    final url = album['url']; // Replace with the actual URL
     final releaseId = int.tryParse(
       album['id'].toString(),
     ); // Safely convert to int
@@ -847,7 +856,7 @@ class _GalleryPageState extends State<GalleryPage>
                           MediaQuery.of(context).size.height *
                           0.35, // 35% height
                       fit: BoxFit.cover,
-                                          ),
+                    ),
                   ),
                 ),
                 // Album metadata
@@ -937,7 +946,6 @@ class _GalleryPageState extends State<GalleryPage>
                                 ),
                               );
                               _loadLists(); // Reload lists to reflect the updated state
-
                             } catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
