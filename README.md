@@ -1,14 +1,14 @@
 # Spindex
-![Spindex Logo](assets/TheSpindexFullLogo.png)
+[![Spindex Logo](assets/TheSpindexFullLogo.png)](https://drive.google.com/file/d/1k7bYZSEnx-8VhI0ooUddJMuxbpnX22UJ/view?usp=sharing)
+Click the image for a video demonstration!
+Or, [try out the web app version here!](https://thespindex-d6b69.web.app)
+
 ### Welcome to Spindex!
 Spindex is an app for cataloging your analogue music collection - built by a vinyl lover, for vinyl lovers. Gone are the days of accidently purchasing a second copy of an album you already own! Create wish lists, manage your collection, and show off your favorites.
-
-[Try out the web app version here!](https://thespindex-d6b69.web.app)
 
 ### What is Spindex?
 Spindex is a cross-platform mobile application built using [Flutter](https://flutter.dev/), a UI toolkit for building natively compiled applications for mobile, web, and desktop from a single codebase. This app leverages the power of [Firebase](https://firebase.google.com/) to provide backend services such as authentication, database, cloud storage, and serverless functions. Additionally, it integrates with the [Discogs API](https://www.discogs.com/developers/) to fetch music-related data, and the [OpenAI API](https://platform.openai.com/docs/overview) for image processing and metadata extraction.
 
-Click this architecture diagram for a video demo:
 [![Spindex Architecture - Click for a video demo!](spindex_diagram.svg)](https://drive.google.com/file/d/1k7bYZSEnx-8VhI0ooUddJMuxbpnX22UJ/view?usp=sharing)
 
 ## Features
