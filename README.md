@@ -8,7 +8,7 @@ Spindex is an app for cataloging your analogue music collection - built by a vin
 ### What is Spindex?
 Spindex is a cross-platform mobile application built using [Flutter](https://flutter.dev/), a UI toolkit for building natively compiled applications for mobile, web, and desktop from a single codebase. This app leverages the power of [Firebase](https://firebase.google.com/) to provide backend services such as authentication, database, cloud storage, and serverless functions. Additionally, it integrates with the [Discogs API](https://www.discogs.com/developers/) to fetch music-related data, and the [OpenAI API](https://platform.openai.com/docs/overview) for image processing and metadata extraction.
 
-![Spindex Architecture](spindex_diagram.svg)
+[![Spindex Architecture - Click for a video demo!](spindex_diagram.svg)](https://drive.google.com/file/d/1k7bYZSEnx-8VhI0ooUddJMuxbpnX22UJ/view?usp=sharing)
 
 ## Features
 - **Cross-Platform**: Runs seamlessly on both iOS and Android devices.
@@ -19,6 +19,7 @@ Spindex is a cross-platform mobile application built using [Flutter](https://flu
     - **Remote Configuration**: Store API keys safely and load them dynamically - no need to hard code secrets into your app.
     - **Firebase Functions**: Used to proxy API requests and mitigate CORS issues when interacting with external APIs like Discogs.
 - **Discogs API Integration**: Fetch detailed music metadata, including album art, track lists, and artist information.
+
 
 ## Getting Started
 If you want to build Spindex on your own machine, you can follow these instructions to get started. Note: You will need to deploy your own Firebase function and modify the files to include your own Firebase project identifiers, as well as your own configuration for Discogs and OpenAI API keys.
